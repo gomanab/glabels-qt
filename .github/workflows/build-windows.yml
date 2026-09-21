@@ -1,7 +1,7 @@
 name: Build gLabels 4 Windows EXE
 
 on:
-  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -16,22 +16,33 @@ jobs:
           choco install cmake ninja qt6-base-dev -y
 
       - name: Configure CMake
+        shell: powershell
         run: |
+          # Add Qt binaries to system PATH so build-time executables (like XmlStrings.exe) can find Qt DLLs
+          $env:PATH = "C:\tools\Qt\6.x.x\mingw_64\bin;C:\ProgramData\chocolatey\lib\qt6-base-dev\tools;$env:PATH"
+          
           mkdir build
           cd build
           cmake -G "Ninja" ..
 
       - name: Build gLabels 4
+        shell: powershell
         run: |
+          # Set PATH for Ninja execution phase
+          $qtDir = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\qt6-base-dev" -Recurse -Filter "QtCore.dll" | Select-Object -First 1 -ExpandProperty DirectoryName
+          $env:PATH = "$qtDir;$env:PATH"
+          
           cd build
           ninja
 
       - name: Package Executable and Dependencies
         shell: powershell
         run: |
+          $qtDir = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\qt6-base-dev" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty DirectoryName
+          $env:PATH = "$qtDir;$env:PATH"
+          
           mkdir dist
           Copy-Item build/glabels-qt.exe dist/
-          # Deploy Qt runtime dependencies alongside the EXE
           windeployqt --no-compiler-runtime dist/glabels-qt.exe
 
       - name: Upload Windows Binary Artifact
