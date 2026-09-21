@@ -1,0 +1,41 @@
+name: Build gLabels 4 Windows EXE
+
+on:
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Qt6 and Build Tools
+        run: |
+          choco install cmake ninja qt6-base-dev -y
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake -G "Ninja" ..
+
+      - name: Build gLabels 4
+        run: |
+          cd build
+          ninja
+
+      - name: Package Executable and Dependencies
+        shell: powershell
+        run: |
+          mkdir dist
+          Copy-Item build/glabels-qt.exe dist/
+          # Deploy Qt runtime dependencies alongside the EXE
+          windeployqt --no-compiler-runtime dist/glabels-qt.exe
+
+      - name: Upload Windows Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: glabels-4-windows-x64
+          path: dist/
