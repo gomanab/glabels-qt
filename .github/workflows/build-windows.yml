@@ -15,16 +15,12 @@ jobs:
         run: |
           choco install cmake ninja qt6-base-dev -y
 
-      - name: Add Qt Binaries to Global Environment PATH
+      - name: Add Qt Binaries to Global PATH
         shell: powershell
         run: |
-          # Find the exact directory containing Qt6 DLLs and append to GITHUB_PATH
+          # Find the Qt runtime directory containing Qt6Core.dll and persist it to GITHUB_PATH
           $qtDllDir = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\qt6-base-dev" -Recurse -Filter "Qt6Core.dll" | Select-Object -First 1 -ExpandProperty DirectoryName
           echo "$qtDllDir" >> $env:GITHUB_PATH
-          
-          # Also append CMake/Ninja tools path if present
-          $qtToolDir = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\qt6-base-dev" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty DirectoryName
-          echo "$qtToolDir" >> $env:GITHUB_PATH
 
       - name: Configure CMake
         shell: powershell
@@ -42,6 +38,9 @@ jobs:
       - name: Package Executable and Dependencies
         shell: powershell
         run: |
+          $qtToolDir = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\qt6-base-dev" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty DirectoryName
+          $env:PATH = "$qtToolDir;$env:PATH"
+          
           mkdir dist
           Copy-Item build/glabels-qt.exe dist/
           windeployqt --no-compiler-runtime dist/glabels-qt.exe
